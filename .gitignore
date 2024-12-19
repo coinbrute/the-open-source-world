@@ -2,5 +2,12 @@
 /frontend/dist/
 /backend/node_modules/
 /backend/.env
+/backend/data/db/diagnostic.data/
+/backend/data/db/journal/
+/backend/data/db/*.wt
+/backend/data/db/*.lock
+/backend/data/db/*.turtle
+/backend/data/db/WiredTiger
+/backend/data/db/*.bson
 repomix-output.txt
 .DS_Store

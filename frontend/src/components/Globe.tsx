@@ -19,7 +19,10 @@ interface Repo {
         login: string;
         avatar_url: string;
         html_url: string;
-        location: string | null;
+        location: {
+            lat: number;
+            lon: number;
+        } | null;
     };
 }
 
@@ -32,7 +35,6 @@ interface ProjectCoord {
 const Globe: React.FC = () => {
     const [repos, setRepos] = useState<Repo[]>([]);
     const [projectCoords, setProjectCoords] = useState<ProjectCoord[]>([]);
-    const [geocodingCache, setGeocodingCache] = useState<{ [key: string]: { lat: number; lon: number } }>({});
     const isInitialMount = useRef(true);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('');
     const [minStars, setMinStars] = useState<number>(0);
@@ -46,6 +48,25 @@ const Globe: React.FC = () => {
         }
     }, []);
 
+    useEffect(() => {
+        const fetchLocations = async () => {
+            const newProjectCoords: ProjectCoord[] = [];
+    
+            for (const repo of repos) {
+                const location = repo.owner.location;
+                if (location) {
+                    newProjectCoords.push({ lat: location.lat, lon: location.lon, repo });
+                }
+            }
+    
+            setProjectCoords(newProjectCoords);
+        };
+    
+        if (repos.length > 0) {
+            fetchLocations();
+        }
+    }, [repos]);
+
     const fetchRepos = async () => {
         try {
             const response = await axios.get<Repo[]>('/api/top-repos');
@@ -54,53 +75,6 @@ const Globe: React.FC = () => {
             console.error('Error fetching repositories:', error);
         }
     };
-
-    useEffect(() => {
-        const fetchLocations = async () => {
-            const newProjectCoords: ProjectCoord[] = [];
-            const newCache = { ...geocodingCache };
-
-            for (const repo of repos) {
-                const location = repo.owner.location;
-                if (location) {
-                    if (newCache[location]) {
-                        // Use cached coordinates
-                        newProjectCoords.push({ lat: newCache[location].lat, lon: newCache[location].lon, repo });
-                    } else {
-                        // Geocode the location
-                        try {
-                            const geoResponse = await axios.get('https://nominatim.openstreetmap.org/search', {
-                                params: {
-                                    q: location,
-                                    format: 'json',
-                                    limit: 1,
-                                },
-                            });
-
-                            if (geoResponse.data && geoResponse.data.length > 0) {
-                                const { lat, lon } = geoResponse.data[0];
-                                const parsedLat = parseFloat(lat);
-                                const parsedLon = parseFloat(lon);
-                                newProjectCoords.push({ lat: parsedLat, lon: parsedLon, repo });
-                                newCache[location] = { lat: parsedLat, lon: parsedLon };
-                            } else {
-                                console.warn(`No geocoding result for location: ${location}`);
-                            }
-                        } catch (error) {
-                            console.error(`Geocoding error for ${location}:`, error);
-                        }
-                    }
-                }
-            }
-
-            setProjectCoords(newProjectCoords);
-            setGeocodingCache(newCache);
-        };
-
-        if (repos.length > 0) {
-            fetchLocations();
-        }
-    }, [repos, geocodingCache]);
 
     // Function to convert lat/lon to 3D coordinates
     const latLonToXYZ = (lat: number, lon: number, radius: number) => {
@@ -142,17 +116,20 @@ const Globe: React.FC = () => {
                 <directionalLight position={[5, 3, 5]} intensity={1} />
                 <GlobeMesh />
                 {filteredProjects.map((project, _index) => {
-                    const position = latLonToXYZ(project.lat, project.lon, 1.51); // Slightly above the globe
+                    if (!project.repo.owner.location) return null;
+
+                    const { lat, lon } = project.repo.owner.location;
+                    const position = latLonToXYZ(lat, lon, 1.51); // Slightly above the globe
                     const glowIntensity = Math.log(project.repo.stargazers_count + project.repo.forks_count + 1) * 0.05;
                     const color = `hsl(${(project.repo.stargazers_count % 360)}, 100%, 50%)`; // Color based on stars
 
                     return (
                         <Hotspot
-                            key={project.repo.id}
-                            position={position}
-                            size={0.02 + glowIntensity}
-                            color={color}
-                            repo={project.repo}
+                        key={project.repo.id}
+                        position={position}
+                        size={0.02 + glowIntensity}
+                        color={color}
+                        repo={project.repo}
                         />
                     );
                 })}

@@ -3,7 +3,11 @@ const axios = require('axios');
 const cors = require('cors');
 const NodeCache = require('node-cache');
 const cron = require('node-cron');
+const mongoose = require('mongoose');
+const pLimit = require('p-limit');
 require('dotenv').config();
+
+const Geocode = require('./models/Geocode');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,6 +18,16 @@ app.use(express.json());
 // Initialize caches
 const userCache = new NodeCache({ stdTTL: 3600 }); // 1 hour TTL
 let cachedRepos = [];
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Connected to MongoDB');
+}).catch(err => {
+  console.error('MongoDB connection error:', err);
+});
 
 // Example route
 app.get('/', (req, res) => {
@@ -45,7 +59,8 @@ const fetchTopRepos = async () => {
   try {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
-      return res.status(500).json({ error: 'GitHub token not configured' });
+      console.error('GitHub token not configured');
+      return;
     }
 
     // Step 1: Fetch top repositories
@@ -65,32 +80,100 @@ const fetchTopRepos = async () => {
     const repositories = repoResponse.data.items;
 
     // Step 2: Fetch owner profiles with concurrency control
-    const reposWithLocationPromises = repositories.map(async (repo) => {
-        const ownerProfile = await fetchUserProfile(repo.owner.url, githubToken);
-        return {
-          id: repo.id,
-          name: repo.name,
-          full_name: repo.full_name,
-          description: repo.description,
-          stargazers_count: repo.stargazers_count,
-          forks_count: repo.forks_count,
-          language: repo.language,
-          html_url: repo.html_url,
-          owner: {
-            login: repo.owner.login,
-            avatar_url: repo.owner.avatar_url,
-            html_url: repo.owner.html_url,
-            location: ownerProfile.location,
-          },
-        };
-    });
+    const limit = pLimit(5); // Limit to 5 concurrent requests
+
+    const reposWithLocationPromises = repositories.map(repo => limit(async () => {
+      const ownerUrl = repo.owner.url;
+      const cachedUser = userCache.get(ownerUrl);
+      let ownerProfile;
+
+      if (cachedUser) {
+        ownerProfile = cachedUser;
+      } else {
+        try {
+          const userResponse = await axios.get(ownerUrl, {
+            headers: {
+              Authorization: `token ${githubToken}`,
+              'User-Agent': 'Open-Source-Globe',
+            },
+          });
+          ownerProfile = userResponse.data;
+          userCache.set(ownerUrl, ownerProfile);
+        } catch (error) {
+          console.error(`Error fetching user profile for ${ownerUrl}:`, error.message);
+          ownerProfile = { location: null };
+        }
+      }
+
+      // Geocode the location
+      let lat = null;
+      let lon = null;
+
+      if (ownerProfile.location) {
+        // Check persistent cache
+        const geocodeEntry = await Geocode.findOne({ location: ownerProfile.location });
+
+        if (geocodeEntry) {
+          lat = geocodeEntry.lat;
+          lon = geocodeEntry.lon;
+        } else {
+          // Geocode and store in database
+          try {
+            const geoResponse = await axios.get('https://nominatim.openstreetmap.org/search', {
+              params: {
+                q: ownerProfile.location,
+                format: 'json',
+                limit: 1,
+              },
+            });
+
+            if (geoResponse.data && geoResponse.data.length > 0) {
+              lat = parseFloat(geoResponse.data[0].lat);
+              lon = parseFloat(geoResponse.data[0].lon);
+
+              // Save to database
+              const newGeocode = new Geocode({
+                location: ownerProfile.location,
+                lat,
+                lon,
+              });
+
+              await newGeocode.save();
+            } else {
+              console.warn(`No geocoding result for location: ${ownerProfile.location}`);
+            }
+          } catch (error) {
+            console.error(`Geocoding error for ${ownerProfile.location}:`, error.message);
+          }
+        }
+      }
+
+      return {
+        id: repo.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        description: repo.description,
+        stargazers_count: repo.stargazers_count,
+        forks_count: repo.forks_count,
+        language: repo.language,
+        html_url: repo.html_url,
+        owner: {
+          login: repo.owner.login,
+          avatar_url: repo.owner.avatar_url,
+          html_url: repo.owner.html_url,
+          location: lat && lon ? { lat, lon } : null,
+        },
+      };
+    }));
 
     const reposWithLocation = await Promise.all(reposWithLocationPromises);
 
-    cachedRepos = reposWithLocation;
+    // Filter out repositories without valid location
+    cachedRepos = reposWithLocation.filter(repo => repo.owner.location !== null);
+
+    console.log('Fetched and cached top repositories with locations');
   } catch (error) {
     console.error('Error fetching top repositories:', error.message);
-    res.status(500).json({ error: 'Failed to fetch repositories' });
   }
 };
 
