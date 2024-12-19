@@ -48,25 +48,6 @@ const Globe: React.FC = () => {
         }
     }, []);
 
-    useEffect(() => {
-        const fetchLocations = async () => {
-            const newProjectCoords: ProjectCoord[] = [];
-    
-            for (const repo of repos) {
-                const location = repo.owner.location;
-                if (location) {
-                    newProjectCoords.push({ lat: location.lat, lon: location.lon, repo });
-                }
-            }
-    
-            setProjectCoords(newProjectCoords);
-        };
-    
-        if (repos.length > 0) {
-            fetchLocations();
-        }
-    }, [repos]);
-
     const fetchRepos = async () => {
         try {
             const response = await axios.get<Repo[]>('/api/top-repos');
@@ -75,6 +56,26 @@ const Globe: React.FC = () => {
             console.error('Error fetching repositories:', error);
         }
     };
+
+    useEffect(() => {
+        const fetchLocations = async () => {
+            const newProjectCoords: ProjectCoord[] = [];
+            // geocodingCache is no longer needed as caching is handled by backend
+
+            for (const repo of repos) {
+                const location = repo.owner.location;
+                if (location) {
+                    newProjectCoords.push({ lat: location.lat, lon: location.lon, repo });
+                }
+            }
+
+            setProjectCoords(newProjectCoords);
+        };
+
+        if (repos.length > 0) {
+            fetchLocations();
+        }
+    }, [repos]);
 
     // Function to convert lat/lon to 3D coordinates
     const latLonToXYZ = (lat: number, lon: number, radius: number) => {
@@ -112,24 +113,24 @@ const Globe: React.FC = () => {
                 setSearchTerm={setSearchTerm}
             />
             <Canvas camera={{ position: [0, 0, 5] }}>
-                <ambientLight intensity={0.5} />
-                <directionalLight position={[5, 3, 5]} intensity={1} />
+                {/* Enhanced Lighting */}
+                <ambientLight intensity={1} />
+                <directionalLight position={[5, 3, 5]} intensity={1.5} />
+                <pointLight position={[0, 0, 5]} intensity={1} />
+                
                 <GlobeMesh />
                 {filteredProjects.map((project, _index) => {
-                    if (!project.repo.owner.location) return null;
-
-                    const { lat, lon } = project.repo.owner.location;
-                    const position = latLonToXYZ(lat, lon, 1.51); // Slightly above the globe
+                    const position = latLonToXYZ(project.lat, project.lon, 1.51); // Slightly above the globe
                     const glowIntensity = Math.log(project.repo.stargazers_count + project.repo.forks_count + 1) * 0.05;
                     const color = `hsl(${(project.repo.stargazers_count % 360)}, 100%, 50%)`; // Color based on stars
 
                     return (
                         <Hotspot
-                        key={project.repo.id}
-                        position={position}
-                        size={0.02 + glowIntensity}
-                        color={color}
-                        repo={project.repo}
+                            key={project.repo.id}
+                            position={position}
+                            size={0.02 + glowIntensity}
+                            color={color}
+                            repo={project.repo}
                         />
                     );
                 })}

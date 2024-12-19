@@ -1,23 +1,25 @@
 import React, { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const GlobeMesh: React.FC = () => {
   const globeRef = useRef<THREE.Mesh>(null!);
 
-  // Rotate the globe slowly
-  useFrame(() => {
-    globeRef.current.rotation.y += 0.001;
-  });
+  const [colorMap, bumpMap, specularMap] = useLoader(THREE.TextureLoader, [
+    '/images/earth/earth_diffuse.png',
+    '/images/earth/earth_bump.png',
+    '/images/earth/earth_specular.png', 
+  ]);
 
   return (
     <mesh ref={globeRef}>
       <sphereGeometry args={[1.5, 64, 64]} />
-      <meshStandardMaterial
-        color="#1a2b4c"
-        wireframe
-        emissive="#ffffff"
-        emissiveIntensity={0.2}
+      <meshPhongMaterial
+        map={colorMap}
+        bumpMap={bumpMap}
+        bumpScale={0.05}
+        specularMap={specularMap}
+        specular={'grey'}
       />
     </mesh>
   );
