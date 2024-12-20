@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import * as THREE from 'three';
 import { Mesh } from 'three';
-import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import { ThreeEvent } from '@react-three/fiber';
 import { a, useSpring } from '@react-spring/three';
 
 interface Repo {
@@ -29,9 +29,15 @@ interface HotspotProps {
   position: [number, number, number];
   color: string;
   repo: Repo;
+  setActiveRepoId: (repo: Repo | null) => void;
 }
 
-const Hotspot: React.FC<HotspotProps> = ({ position, color, repo }) => {
+const Hotspot: React.FC<HotspotProps> = ({
+  position,
+  color,
+  repo,
+  setActiveRepoId,
+}) => {
   const [hovered, setHovered] = useState(false);
   const hotspotRef = useRef<Mesh>(null!);
 
@@ -41,9 +47,16 @@ const Hotspot: React.FC<HotspotProps> = ({ position, color, repo }) => {
     config: { tension: 300, friction: 20 },
   });
 
-  // Function to handle tooltip persistence
+  // Function to handle hover events
   const handlePointerOver = () => setHovered(true);
   const handlePointerOut = () => setHovered(false);
+
+  // Function to handle click events
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation(); // Prevent event bubbling to Globe
+    console.log(`Hotspot clicked: ${repo.name}`); // Debugging line
+    setActiveRepoId(repo); // Set the active repository
+  };
 
   return (
     <a.mesh
@@ -51,6 +64,7 @@ const Hotspot: React.FC<HotspotProps> = ({ position, color, repo }) => {
       ref={hotspotRef}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
+      onClick={handleClick} // Add onClick handler
       scale={hovered ? [1.2, 1.2, 1.2] : [1, 1, 1]}
     >
       {/* Thin cylinder representing a beam */}
@@ -72,8 +86,6 @@ const Hotspot: React.FC<HotspotProps> = ({ position, color, repo }) => {
             pointerEvents: 'auto',
             userSelect: 'none',
           }}
-          onPointerOver={() => setHovered(true)}
-          onPointerOut={() => setHovered(false)}
         >
           <div className="tooltip">
             <strong>{repo.name}</strong>

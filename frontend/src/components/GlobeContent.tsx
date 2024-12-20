@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import Hotspot from './Hotspot';
 import ClusterHotspot from './ClusterHotspot';
@@ -38,6 +38,7 @@ interface GlobeContentProps {
   searchTerm: string;
   orbitControlsRef: React.RefObject<OrbitControlsImpl>;
   setZoom: (distance: number) => void;
+  setActiveRepo: (repo: Repo | null) => void;
 }
 
 const GlobeContent: React.FC<GlobeContentProps> = ({
@@ -47,7 +48,9 @@ const GlobeContent: React.FC<GlobeContentProps> = ({
   searchTerm,
   orbitControlsRef,
   setZoom,
+  setActiveRepo,
 }) => {
+  const [activeRepoId, setActiveRepoId] = useState<number | null>(null);
   const { camera } = useThree();
 
   // Apply filters
@@ -124,8 +127,13 @@ const GlobeContent: React.FC<GlobeContentProps> = ({
 
         const repo: Repo = cluster.properties.repo;
         const color = `hsl(${(repo.stargazers_count % 360)}, 100%, 50%)`;
-
-        return <Hotspot key={repo.id} position={[x, y, z]} color={color} repo={repo} />;
+        return <Hotspot
+          key={repo.id}
+          position={[x, y, z]}
+          color={color}
+          repo={repo}
+          setActiveRepoId={setActiveRepo}
+        />;
       })}
     </>
   );

@@ -7,25 +7,43 @@
   background-color: #000;
 }
 
-.tooltip {
-  background-color: rgba(0, 0, 0, 0.8);
+/* Tooltip Modal Styles */
+.tooltip-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.9);
   color: #ffffff;
-  padding: 10px 15px;
-  border-radius: 6px;
-  max-width: 250px;
-  font-size: 14px;
-  pointer-events: auto; /* Allow interactions */
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  padding: 20px 30px;
+  border-radius: 8px;
+  z-index: 1000;
+  max-width: 300px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-.tooltip a {
+.tooltip-content {
+  position: relative;
+}
+
+.tooltip-content .close-button {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.tooltip-content .close-button:hover {
+  color: #ff0000;
+}
+
+.tooltip-content a {
   color: #1e90ff;
   text-decoration: underline;
-}
-
-.tooltip:hover {
-  opacity: 1;
-  transform: scale(1.05);
 }
 
 .filters {

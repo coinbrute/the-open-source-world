@@ -33,7 +33,11 @@ interface ProjectCoord {
   repo: Repo;
 }
 
-const Globe: React.FC = () => {
+interface GlobeProps {
+  setActiveRepo: (repo: Repo | null) => void;
+}
+
+const Globe: React.FC<GlobeProps> = ({ setActiveRepo }) => {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [projectCoords, setProjectCoords] = useState<ProjectCoord[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
@@ -42,6 +46,7 @@ const Globe: React.FC = () => {
   const [zoom, setZoom] = useState<number>(1);
   const orbitControlsRef = useRef<OrbitControlsImpl>(null!);
 
+  
   useEffect(() => {
     fetchRepos();
   }, []);
@@ -103,8 +108,15 @@ const Globe: React.FC = () => {
           searchTerm={searchTerm}
           orbitControlsRef={orbitControlsRef}
           setZoom={setZoom}
+          setActiveRepo={setActiveRepo}
         />
-        <OrbitControls ref={orbitControlsRef} enableZoom={true} />
+        <OrbitControls 
+          ref={orbitControlsRef} 
+          enableZoom={true}
+          maxDistance={10}
+          minDistance={2}
+          enablePan={false} 
+        />
         <Stars />
       </Canvas>
     </>
