@@ -169,9 +169,36 @@ const fetchTopRepos = async () => {
     const reposWithLocation = await Promise.all(reposWithLocationPromises);
 
     // Filter out repositories without valid location
-    cachedRepos = reposWithLocation.filter(repo => repo.owner.location !== null);
+    let validRepos = reposWithLocation.filter(repo => repo.owner.location !== null);
 
-    console.log('Fetched and cached top repositories with locations');
+    // Detect and offset overlapping locations
+    const locationMap = {};
+
+    validRepos = validRepos.map(repo => {
+      const key = `${repo.owner.location.lat.toFixed(2)},${repo.owner.location.lon.toFixed(2)}`;
+      if (locationMap[key]) {
+        // Offset by a small angle
+        const offset = locationMap[key] * 0.5; // 0.5 degrees per overlap
+        locationMap[key] += 1;
+        return {
+          ...repo,
+          owner: {
+            ...repo.owner,
+            location: {
+              lat: repo.owner.location.lat + offset,
+              lon: repo.owner.location.lon + offset,
+            },
+          },
+        };
+      } else {
+        locationMap[key] = 1;
+        return repo;
+      }
+    });
+
+    cachedRepos = validRepos;
+
+    console.log('Fetched and cached top repositories with locations and offsets');
   } catch (error) {
     console.error('Error fetching top repositories:', error.message);
   }
