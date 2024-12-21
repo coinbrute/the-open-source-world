@@ -6,6 +6,7 @@ import GlobeMesh from './GlobeMesh';
 import GlobeContent from './GlobeContent';
 import axios from 'axios';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import Tooltip from './Tooltip';
 
 interface Repo {
   id: number;
@@ -33,18 +34,21 @@ interface ProjectCoord {
   repo: Repo;
 }
 
-interface GlobeProps {
-  setActiveRepo: (repo: Repo | null) => void;
-}
+// interface GlobeProps {
+//   setActiveRepo: (repo: Repo | null) => void;
+// }
 
-const Globe: React.FC<GlobeProps> = ({ setActiveRepo }) => {
+// const Globe: React.FC<GlobeProps> = ({ setActiveRepo }) => {
+const Globe: React.FC = () => {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [projectCoords, setProjectCoords] = useState<ProjectCoord[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
   const [minStars, setMinStars] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [minForks, setMinForks] = useState<number>(0);
   const [zoom, setZoom] = useState<number>(1);
   const orbitControlsRef = useRef<OrbitControlsImpl>(null!);
+  const [activeRepo, setActiveRepo] = useState<Repo | null>(null);
 
   
   useEffect(() => {
@@ -93,12 +97,17 @@ const Globe: React.FC<GlobeProps> = ({ setActiveRepo }) => {
         setMinStars={setMinStars}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
+        minForks={minForks}
+        setMinForks={setMinForks}
       />
-      <Canvas camera={{ position: [0, 0, 5] }}>
+      {activeRepo && (
+        <Tooltip repo={activeRepo} onClose={() => setActiveRepo(null)} />
+      )}
+      <Canvas className="canvas-default" camera={{ position: [0, 0, 5] }}>
         {/* Enhanced Lighting */}
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[5, 3, 5]} intensity={1.5} />
-        <pointLight position={[0, 0, 5]} intensity={1} />
+        <ambientLight intensity={1} />
+        <directionalLight position={[5, 5, 5]} intensity={1.5} />
+        <pointLight position={[0, 0, 0]} intensity={1.5} />
 
         <GlobeMesh />
         <GlobeContent
@@ -107,15 +116,19 @@ const Globe: React.FC<GlobeProps> = ({ setActiveRepo }) => {
           minStars={minStars}
           searchTerm={searchTerm}
           orbitControlsRef={orbitControlsRef}
-          setZoom={setZoom}
           setActiveRepo={setActiveRepo}
-        />
+          minForks={minForks}
+          setZoom={setZoom}
+          activeRepo={activeRepo}
+          />
         <OrbitControls 
           ref={orbitControlsRef} 
           enableZoom={true}
-          maxDistance={10}
-          minDistance={2}
-          enablePan={false} 
+          maxDistance={10} // Upper limit for zooming out
+          minDistance={2}  // Lower limit for zooming in
+          enablePan={false} // Disable panning for focused control
+          enableDamping={true} // Enable damping for smoother transitions
+          dampingFactor={0.1} // Damping factor
         />
         <Stars />
       </Canvas>

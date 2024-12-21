@@ -10,12 +10,12 @@
 /* Tooltip Modal Styles */
 .tooltip-modal {
   position: fixed;
-  top: 50%;
+  top: 5px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  /* transform: translate(-50%, -50%); */
   background-color: rgba(0, 0, 0, 0.9);
-  color: #ffffff;
-  padding: 20px 30px;
+  color: #fff;
+  padding: 10px;
   border-radius: 8px;
   z-index: 1000;
   max-width: 300px;
@@ -32,7 +32,7 @@
   right: 8px;
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: #fff;
   font-size: 20px;
   cursor: pointer;
 }
@@ -44,6 +44,14 @@
 .tooltip-content a {
   color: #1e90ff;
   text-decoration: underline;
+}
+
+.tooltip {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  pointer-events: none; /* Ensure tooltip does not block pointer events */
 }
 
 .filters {
@@ -130,4 +138,12 @@
 
 .qr-content button:hover {
   background: #0056b3;
+}
+
+.canvas-hovered {
+  cursor: pointer;
+}
+
+.canvas-default {
+  cursor: auto;
 }

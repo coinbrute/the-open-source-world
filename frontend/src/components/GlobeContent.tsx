@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import Hotspot from './Hotspot';
-import ClusterHotspot from './ClusterHotspot';
-import { createCluster } from '../utils/cluster';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
 interface Repo {
@@ -39,6 +37,8 @@ interface GlobeContentProps {
   orbitControlsRef: React.RefObject<OrbitControlsImpl>;
   setZoom: (distance: number) => void;
   setActiveRepo: (repo: Repo | null) => void;
+  minForks: number;
+  activeRepo: Repo | null;
 }
 
 const GlobeContent: React.FC<GlobeContentProps> = ({
@@ -49,31 +49,34 @@ const GlobeContent: React.FC<GlobeContentProps> = ({
   orbitControlsRef,
   setZoom,
   setActiveRepo,
+  minForks,
+  activeRepo,
 }) => {
-  const [activeRepoId, setActiveRepoId] = useState<number | null>(null);
   const { camera } = useThree();
+  
 
   // Apply filters
-  const filteredProjects = useMemo(
+  const filteredProjects = React.useMemo(
     () =>
       projectCoords.filter((project) => {
         const matchesLanguage = selectedLanguage
           ? project.repo.language === selectedLanguage
           : true;
         const matchesStars = project.repo.stargazers_count >= minStars;
+        const matchesForks = project.repo.forks_count >= minForks;
         const matchesSearch = searchTerm
           ? project.repo.name.toLowerCase().includes(searchTerm.toLowerCase())
           : true;
-        return matchesLanguage && matchesStars && matchesSearch;
+        return (
+          matchesLanguage &&
+          matchesStars &&
+          matchesForks &&
+          matchesSearch
+        );
       }),
-    [projectCoords, selectedLanguage, minStars, searchTerm]
+    [projectCoords, selectedLanguage, minStars, minForks, searchTerm]
   );
 
-  // Create clusters based on current zoom
-  const clusters = useMemo(() => {
-    const currentZoom = Math.floor(camera.position.length() * 2); // Simplistic zoom calculation
-    return createCluster(filteredProjects.map((p) => p.repo), currentZoom);
-  }, [filteredProjects, camera.position]);
 
   // Update zoom state based on controls' change event
   useEffect(() => {
@@ -107,33 +110,21 @@ const GlobeContent: React.FC<GlobeContentProps> = ({
 
   return (
     <>
-      {clusters.map((cluster) => {
-        const [lat, lon] = [
-          cluster.geometry.coordinates[1],
-          cluster.geometry.coordinates[0],
-        ];
+      {filteredProjects.map((project) => {
+        const { lat, lon } = project;
         const [x, y, z] = latLonToXYZ(lat, lon, 1.51); // Adjust radius as needed
+        const color = `hsl(${(project.repo.stargazers_count % 360)}, 100%, 50%)`;
 
-        if (cluster.properties.cluster) {
-          return (
-            <ClusterHotspot
-              key={`cluster-${cluster.properties.cluster_id}`}
-              position={[x, y, z]}
-              count={cluster.properties.point_count}
-              orbitControlsRef={orbitControlsRef}
-            />
-          );
-        }
-
-        const repo: Repo = cluster.properties.repo;
-        const color = `hsl(${(repo.stargazers_count % 360)}, 100%, 50%)`;
-        return <Hotspot
-          key={repo.id}
-          position={[x, y, z]}
-          color={color}
-          repo={repo}
-          setActiveRepoId={setActiveRepo}
-        />;
+        return (
+          <Hotspot
+            key={project.repo.id}
+            position={[x, y, z]}
+            color={color}
+            repo={project.repo}
+            setActiveRepo={setActiveRepo}
+            tooltipActive={activeRepo !== null}
+          />
+        );
       })}
     </>
   );

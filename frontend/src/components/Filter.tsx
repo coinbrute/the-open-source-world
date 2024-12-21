@@ -8,6 +8,8 @@ interface FiltersProps {
   setMinStars: (stars: number) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  minForks: number;
+  setMinForks: (forks: number) => void;
 }
 
 const Filters: React.FC<FiltersProps> = ({
@@ -18,6 +20,8 @@ const Filters: React.FC<FiltersProps> = ({
   setMinStars,
   searchTerm,
   setSearchTerm,
+  minForks,
+  setMinForks,
 }) => {
   return (
     <div className="filters">
@@ -36,12 +40,14 @@ const Filters: React.FC<FiltersProps> = ({
         </select>
       </label>
       <label>
-        Minimum Stars:
+        Stars Count:
         <input
-          type="number"
+          type="range"
           value={minStars}
           onChange={e => setMinStars(parseInt(e.target.value))}
           min="0"
+          max="1000000"
+          step="10"
         />
       </label>
       <label>
@@ -51,6 +57,17 @@ const Filters: React.FC<FiltersProps> = ({
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           placeholder="Project name..."
+        />
+      </label>
+      <label>
+        Forks Count:
+        <input
+          type="range"
+          value={minForks}
+          onChange={e => setMinForks(parseInt(e.target.value))}
+          min="0"
+          max="100000"
+          step="10"
         />
       </label>
     </div>
